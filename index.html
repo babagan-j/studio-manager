@@ -42,6 +42,13 @@
         </div>
         <p id="search-status" class="small-note" role="status">Start typing to find a student.</p>
         <div id="search-results" class="search-results" aria-live="polite"></div>
+        <button id="chinese-search-toggle" type="button" class="button button-outline chinese-toggle" hidden>Search by Chinese name instead</button>
+        <div id="chinese-search-area" class="chinese-search-area" hidden>
+          <label for="chinese-search" class="field-label">Chinese name · 中文姓名</label>
+          <div class="search-wrap"><input id="chinese-search" type="search" placeholder="输入中文姓名…" autocomplete="off"><button id="clear-chinese-search" type="button" class="clear-button">Clear</button></div>
+          <p id="chinese-search-status" class="small-note" role="status"></p>
+          <div id="chinese-search-results" class="search-results"></div>
+        </div>
       </div>
     </section>
 
@@ -109,21 +116,28 @@
           <p class="small-note">Create a new, empty 10-visit sheet. Age is optional.</p>
           <form id="add-student-form" class="form-grid">
             <div class="form-field"><label for="new-name">Full name</label><input id="new-name" name="name" maxlength="80" required placeholder="Student's name"></div>
+            <div class="form-field"><label for="new-chinese-name">Chinese name (optional)</label><input id="new-chinese-name" maxlength="80" placeholder="中文姓名"></div>
             <div class="form-field"><label for="new-age">Age (optional)</label><input id="new-age" name="age" type="number" min="1" max="120" placeholder="e.g. 12"></div>
             <button class="button button-primary button-full" type="submit">Add student</button>
           </form>
         </div>
         <div class="panel form-panel">
+          <h2>View all students</h2>
+          <p class="small-note">Tap a student to open their details for editing. All fictional students appear here, including those who haven't visited recently.</p>
+          <div id="all-students-list" class="all-students-list"></div>
+        </div>
+        <div class="panel form-panel" id="edit-student-panel">
           <h2>Edit student details</h2>
           <form id="edit-student-form" class="form-grid">
             <div class="form-field"><label for="edit-select">Select student</label><select id="edit-select" required></select></div>
             <div class="form-field"><label for="edit-name">Full name</label><input id="edit-name" maxlength="80" required></div>
+            <div class="form-field"><label for="edit-chinese-name">Chinese name (optional)</label><input id="edit-chinese-name" maxlength="80" placeholder="中文姓名"></div>
             <div class="form-field"><label for="edit-age">Age (optional)</label><input id="edit-age" type="number" min="1" max="120"></div>
             <button class="button button-secondary button-full" type="submit">Save student details</button>
           </form>
           <div class="edit-corrections">
-            <h3>Correct attendance</h3>
-            <p class="small-note">Remove an incorrect visit from the selected student's current sheet. Changes appear in the activity log.</p>
+            <h3>Edit attendance</h3>
+            <p class="small-note">Change a visit date or remove an incorrect entry. Changes appear in the activity log.</p>
             <div id="admin-visit-list" class="admin-visit-list"></div>
           </div>
         </div>
@@ -182,6 +196,19 @@
       <div class="dialog-actions">
         <button type="button" id="pin-cancel" class="button button-outline">Cancel</button>
         <button type="submit" class="button button-primary">Continue</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="edit-visit-dialog" class="dialog">
+    <form id="edit-visit-form">
+      <h2>Edit attendance</h2>
+      <p id="edit-visit-description" class="supporting-text"></p>
+      <label for="edit-visit-date" class="field-label">Attendance date</label>
+      <input id="edit-visit-date" type="date" required>
+      <div class="dialog-actions edit-visit-actions">
+        <button type="button" id="edit-visit-cancel" class="button button-outline">Cancel</button>
+        <button type="button" id="edit-visit-remove" class="button button-danger">Remove entry</button>
+        <button type="submit" class="button button-primary">Save date</button>
       </div>
     </form>
   </dialog>

@@ -13,6 +13,7 @@ let nextVisitId = 1;
 let selectedStudentId = null;
 let pendingConfirmation = null;
 let pendingPinAction = null;
+let editingVisitId = null;
 let toastTimer;
 const logEntries = [];
 
@@ -47,20 +48,20 @@ function makeVisit(date, source = "confirmed") {
 function makeSheet(visits = []) {
   return { id: nextSheetId++, visits };
 }
-function makeStudent(name, age, currentOffsets, previousOffsets = []) {
+function makeStudent(name, age, currentOffsets, previousOffsets = [], chineseName = "") {
   const sheets = [];
   if (previousOffsets.length) {
     sheets.push(makeSheet(previousOffsets.map((n) => makeVisit(daysAgo(n), "sample"))));
   }
   sheets.push(makeSheet(currentOffsets.map((n) => makeVisit(daysAgo(n), "sample"))));
-  return { id: nextStudentId++, name, age, sheets };
+  return { id: nextStudentId++, name, chineseName, age, sheets };
 }
 
 // Fictional examples, including two students with the same name.
 const students = [
-  makeStudent("Emily Chen", 12, [42, 35, 28, 21, 14, 7], [175, 168, 161, 154, 147, 140, 133, 126, 119, 112]),
-  makeStudent("Kevin Li", 16, [63, 56, 49, 42, 35, 28, 21, 14, 7]),
-  makeStudent("Sophia Wang", 10, [70, 63, 56, 49, 42, 35, 28, 21, 14, 7]),
+  makeStudent("Emily Chen", 12, [42, 35, 28, 21, 14, 7], [175, 168, 161, 154, 147, 140, 133, 126, 119, 112], "陈美玲"),
+  makeStudent("Kevin Li", 16, [63, 56, 49, 42, 35, 28, 21, 14, 7], [], "李凯文"),
+  makeStudent("Sophia Wang", 10, [70, 63, 56, 49, 42, 35, 28, 21, 14, 7], [], "王思雅"),
   makeStudent("Jason Wu", 15, [21, 14, 7]),
   makeStudent("Emily Chen", 17, [28, 14]),
   makeStudent("Lucy Zhang", 9, [])
@@ -105,11 +106,29 @@ function showScreen(name) {
 }
 function goHome() {
   $("student-search").value = "";
+  $("chinese-search").value = "";
+  $("chinese-search-area").hidden = true;
   renderSearch();
   showScreen("home");
 }
 
-// The home page only displays matches after someone begins typing.
+// English is the default search. Chinese search is an explicit fallback when no English name matches.
+function appendStudentResults(results, matches) {
+  results.replaceChildren();
+  for (const student of matches) {
+    const row = element("button", "search-result");
+    row.type = "button";
+    const left = element("span");
+    left.appendChild(element("span", "result-name", student.name));
+    const age = student.age === null ? "Age not listed" : `Age ${student.age}`;
+    const sub = `${student.chineseName ? student.chineseName + " · " : ""}${age} · Last visit: ${prettyDate(lastVisit(student))}`;
+    left.appendChild(element("span", "result-subtitle", sub));
+    const used = currentSheet(student).visits.length;
+    row.append(left, element("span", "result-right", `${used} / 10 used  →`));
+    row.addEventListener("click", () => openStudent(student.id));
+    results.appendChild(row);
+  }
+}
 function renderSearch() {
   const query = $("student-search").value.trim().toLocaleLowerCase();
   $("clear-search").hidden = query.length === 0;
@@ -117,28 +136,25 @@ function renderSearch() {
   results.replaceChildren();
   if (!query) {
     $("search-status").textContent = "Start typing to find a student.";
+    $("chinese-search-toggle").hidden = true;
+    $("chinese-search-area").hidden = true;
     return;
   }
-  const matches = students
-    .filter((student) => student.name.toLocaleLowerCase().includes(query))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const matches = students.filter((student) => student.name.toLocaleLowerCase().includes(query))
+    .sort((a,b) => a.name.localeCompare(b.name));
   $("search-status").textContent = `${matches.length} matching student${matches.length === 1 ? "" : "s"}`;
-  if (matches.length === 0) {
-    results.appendChild(element("p", "empty-state", "No matching students. Check the spelling or ask the teacher."));
-    return;
-  }
-  for (const student of matches) {
-    const row = element("button", "search-result");
-    row.type = "button";
-    const left = element("span");
-    left.appendChild(element("span", "result-name", student.name));
-    const age = student.age === null ? "Age not listed" : `Age ${student.age}`;
-    left.appendChild(element("span", "result-subtitle", `${age} · Last visit: ${prettyDate(lastVisit(student))}`));
-    const used = currentSheet(student).visits.length;
-    row.append(left, element("span", "result-right", `${used} / 10 used  →`));
-    row.addEventListener("click", () => openStudent(student.id));
-    results.appendChild(row);
-  }
+  const noMatches = matches.length === 0;
+  $("chinese-search-toggle").hidden = !noMatches || !$("chinese-search-area").hidden;
+  if (!noMatches) $("chinese-search-area").hidden = true;
+  appendStudentResults(results, matches);
+  if (noMatches) results.appendChild(element("p", "empty-state", "No English-name matches. Try Chinese-name search below."));
+}
+function renderChineseSearch() {
+  const query = $("chinese-search").value.trim();
+  const matches = query ? students.filter(s => (s.chineseName || "").includes(query)) : [];
+  $("chinese-search-status").textContent = !query ? "Enter Chinese characters to search." : `${matches.length} matching student${matches.length === 1 ? "" : "s"}`;
+  appendStudentResults($("chinese-search-results"), matches);
+  if (query && !matches.length) $("chinese-search-results").appendChild(element("p", "empty-state", "No matching Chinese names."));
 }
 function openStudent(id) {
   selectedStudentId = id;
@@ -153,7 +169,7 @@ function renderStudent() {
   const sheet = currentSheet(student);
   const used = sheet.visits.length;
   $("student-heading").textContent = student.name;
-  $("student-meta").textContent = student.age === null ? "Age not listed" : `Age ${student.age}`;
+  $("student-meta").textContent = `${student.chineseName ? student.chineseName + " · " : ""}${student.age === null ? "Age not listed" : `Age ${student.age}`}`;
   $("visit-count").textContent = `${used} / ${SHEET_SIZE} visits`;
   $("remaining-count").textContent = `${SHEET_SIZE - used} visits remaining`;
   const tbody = $("attendance-rows");
@@ -281,6 +297,23 @@ function populateSelect(select, desiredId) {
   }
   if (ordered.some((student) => String(student.id) === String(desiredId))) select.value = String(desiredId);
 }
+function renderAllStudents() {
+  const container = $("all-students-list");
+  container.replaceChildren();
+  for (const student of [...students].sort((a,b) => a.name.localeCompare(b.name))) {
+    const row = element("button", "search-result"); row.type = "button";
+    const left = element("span");
+    left.appendChild(element("span", "result-name", student.name));
+    left.appendChild(element("span", "result-subtitle", `${student.chineseName ? student.chineseName + " · " : ""}${student.age === null ? "Age unknown" : `Age ${student.age}`} · Last visit ${prettyDate(lastVisit(student))}`));
+    row.append(left, element("span", "result-right", `${currentSheet(student).visits.length}/10 · Edit →`));
+    row.addEventListener("click", () => {
+      $("edit-select").value = String(student.id);
+      fillEditForm();
+      $("edit-student-panel").scrollIntoView({behavior:"smooth",block:"start"});
+    });
+    container.appendChild(row);
+  }
+}
 function refreshAdminSelectors(preferredId) {
   const oldEdit = preferredId || $("edit-select").value;
   const oldAttendance = preferredId || $("attendance-select").value;
@@ -289,10 +322,12 @@ function refreshAdminSelectors(preferredId) {
   fillEditForm();
   renderAdminAttendance();
   renderEditCorrections();
+  renderAllStudents();
 }
 function fillEditForm() {
   const student = students.find((s) => s.id === Number($("edit-select").value));
   $("edit-name").value = student ? student.name : "";
+  $("edit-chinese-name").value = student ? student.chineseName || "" : "";
   $("edit-age").value = student && student.age !== null ? student.age : "";
   renderEditCorrections();
 }
@@ -318,6 +353,22 @@ function renderAdminAttendance() {
     oldList.appendChild(block);
   }
 }
+function beginEditVisit(visitId) {
+  const student = students.find(s => s.id === Number($("edit-select").value));
+  const visit = student && currentSheet(student).visits.find(v => v.id === visitId);
+  if (!visit) return;
+  editingVisitId = visitId;
+  $("edit-visit-description").textContent = `Edit ${student.name}'s visit on ${prettyDate(visit.date)}.`;
+  $("edit-visit-date").value = visit.date;
+  $("edit-visit-date").max = todayISO();
+  $("edit-visit-dialog").showModal();
+}
+function currentEditedVisit() {
+  const student = students.find(s => s.id === Number($("edit-select").value));
+  if (!student) return null;
+  const visit = currentSheet(student).visits.find(v => v.id === editingVisitId);
+  return visit ? {student, visit} : null;
+}
 function renderEditCorrections() {
   const student = students.find((s) => s.id === Number($("edit-select").value));
   const visitList = $("admin-visit-list");
@@ -332,20 +383,10 @@ function renderEditCorrections() {
     const info = element("div");
     info.appendChild(element("strong", "", prettyDate(visit.date)));
     info.appendChild(element("p", "small-note", visit.source === "imported" ? "Imported from paper" : "Recorded visit"));
-    const remove = element("button", "remove-button", "Correct / remove");
-    remove.type = "button";
-    remove.addEventListener("click", () => askConfirmation(
-      "Correct attendance entry?",
-      `Remove the visit dated ${prettyDate(visit.date)} from ${student.name}'s current sheet? This change will be added to the activity log.`,
-      "Remove entry", () => {
-        sheet.visits = sheet.visits.filter((entry) => entry.id !== visit.id);
-        addLog(`${student.name}: Attendance corrected — removed ${prettyDate(visit.date)}`);
-        renderEditCorrections();
-        renderAdminAttendance();
-        toast("Attendance correction recorded.");
-      }
-    ));
-    row.append(info, remove);
+    const edit = element("button", "button button-outline edit-visit-button", "Edit");
+    edit.type = "button";
+    edit.addEventListener("click", () => beginEditVisit(visit.id));
+    row.append(info, edit);
     visitList.appendChild(row);
   }
 }
@@ -369,8 +410,18 @@ $("student-back").addEventListener("click", goHome);
 $("success-home").addEventListener("click", goHome);
 $("admin-back").addEventListener("click", goHome);
 $("student-search").addEventListener("input", renderSearch);
+$("chinese-search-toggle").addEventListener("click", () => {
+  $("chinese-search-area").hidden = false;
+  $("chinese-search-toggle").hidden = true;
+  $("chinese-search").focus();
+  renderChineseSearch();
+});
+$("chinese-search").addEventListener("input", renderChineseSearch);
+$("clear-chinese-search").addEventListener("click", () => { $("chinese-search").value = ""; renderChineseSearch(); $("chinese-search").focus(); });
 $("clear-search").addEventListener("click", () => {
   $("student-search").value = "";
+  $("chinese-search").value = "";
+  $("chinese-search-area").hidden = true;
   renderSearch();
   $("student-search").focus();
 });
@@ -413,7 +464,7 @@ $("add-student-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const name = $("new-name").value.trim();
   if (!name) return;
-  const student = makeStudent(name, parseAge($("new-age")), []);
+  const student = makeStudent(name, parseAge($("new-age")), [], [], $("new-chinese-name").value.trim());
   students.push(student);
   addLog(`${student.name}: Student record added`);
   $("add-student-form").reset();
@@ -429,6 +480,7 @@ $("edit-student-form").addEventListener("submit", (event) => {
   if (!name) return;
   const oldName = student.name;
   student.name = name;
+  student.chineseName = $("edit-chinese-name").value.trim();
   student.age = parseAge($("edit-age"));
   addLog(`${oldName}: Student details updated${name !== oldName ? ` (now ${name})` : ""}`);
   refreshAdminSelectors(student.id);
@@ -453,6 +505,38 @@ $("import-form").addEventListener("submit", (event) => {
   );
 });
 
+$("edit-visit-cancel").addEventListener("click", () => $("edit-visit-dialog").close());
+$("edit-visit-dialog").addEventListener("close", () => { editingVisitId = null; });
+$("edit-visit-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const target = currentEditedVisit();
+  const date = $("edit-visit-date").value;
+  if (!target || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayISO()) { toast("Enter a valid past or current date."); return; }
+  if (date !== target.visit.date && hasVisitOn(target.student, date)) { toast("A visit already exists on this date."); return; }
+  if (date === target.visit.date) { $("edit-visit-dialog").close(); return; }
+  const {student,visit} = target;
+  const previous = visit.date;
+  $("edit-visit-dialog").close();
+  askConfirmation("Save corrected date?", `Change ${student.name}'s visit from ${prettyDate(previous)} to ${prettyDate(date)}?`, "Save change", () => {
+    visit.date = date;
+    currentSheet(student).visits.sort((a,b) => a.date.localeCompare(b.date));
+    addLog(`${student.name}: Attendance date changed from ${prettyDate(previous)} to ${prettyDate(date)}`);
+    renderEditCorrections(); renderAdminAttendance(); renderAllStudents();
+    toast("Attendance date updated.");
+  });
+});
+$("edit-visit-remove").addEventListener("click", () => {
+  const target = currentEditedVisit();
+  if (!target) return;
+  const {student,visit} = target;
+  $("edit-visit-dialog").close();
+  askConfirmation("Remove attendance entry?", `Remove ${prettyDate(visit.date)} from ${student.name}'s current sheet? This will be added to the log.`, "Remove entry", () => {
+    currentSheet(student).visits = currentSheet(student).visits.filter(v => v.id !== visit.id);
+    addLog(`${student.name}: Attendance corrected — removed ${prettyDate(visit.date)}`);
+    renderEditCorrections(); renderAdminAttendance(); renderAllStudents();
+    toast("Attendance entry removed.");
+  });
+});
 $("import-date").max = todayISO();
 renderSearch();
 refreshAdminSelectors();

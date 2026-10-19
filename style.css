@@ -188,3 +188,15 @@ input::placeholder { color: #87968d; }
 #import-date { min-height: 64px; font-size: 1.15rem; padding: 14px 16px; }
 .edit-corrections { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
 .edit-corrections h3 { font-size: 1.12rem; margin: 0 0 8px; }
+
+/* Version 3: mobile-friendly roster, Chinese-name fallback, and attendance editing. */
+.chinese-toggle { width: 100%; margin-top: 12px; }
+.chinese-search-area { margin-top: 17px; border-top: 1px solid var(--line); padding-top: 16px; }
+.chinese-search-area .small-note { margin: 11px 0; }
+.chinese-search-area .search-wrap input { padding-left: 14px; }
+.all-students-list { display: grid; gap: 9px; margin-top: 14px; max-height: 420px; overflow-y: auto; }
+.edit-visit-button { flex-shrink: 0; }
+.button-danger { background: #fff0ed; color: #953f37; border-color: #e6b9b1; }
+.edit-visit-actions { flex-wrap: wrap; }
+.edit-visit-actions .button { flex: 1 1 125px; }
+#edit-student-panel { scroll-margin-top: 90px; }
