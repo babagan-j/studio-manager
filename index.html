@@ -44,8 +44,8 @@
         <div id="search-results" class="search-results" aria-live="polite"></div>
         <button id="chinese-search-toggle" type="button" class="button button-outline chinese-toggle" hidden>Search by Chinese name instead</button>
         <div id="chinese-search-area" class="chinese-search-area" hidden>
-          <label for="chinese-search" class="field-label">Chinese name · 中文姓名</label>
-          <div class="search-wrap"><input id="chinese-search" type="search" placeholder="输入中文姓名…" autocomplete="off"><button id="clear-chinese-search" type="button" class="clear-button">Clear</button></div>
+          <label for="chinese-search" class="field-label">Chinese name · 中文名字</label>
+          <div class="search-wrap"><input id="chinese-search" type="search" placeholder="输入中文名字…" autocomplete="off"><button id="clear-chinese-search" type="button" class="clear-button">Clear</button></div>
           <p id="chinese-search-status" class="small-note" role="status"></p>
           <div id="chinese-search-results" class="search-results"></div>
         </div>
@@ -74,6 +74,8 @@
             <tbody id="attendance-rows"></tbody>
           </table>
         </div>
+        <p id="payment-hold" class="sheet-alert" hidden><strong>Payment pending.</strong> New sheet started; cash has not yet been confirmed.</p>
+        <button type="button" id="resolve-payment" class="button button-outline button-full" hidden>Mark payment received · Teacher PIN</button>
         <p id="sheet-alert" class="sheet-alert" hidden></p>
         <button type="button" id="record-visit" class="button button-primary button-full">Record today's visit</button>
         <button type="button" id="renew-from-sheet" class="button button-outline button-full" hidden>Start new sheet · Teacher PIN</button>
@@ -116,7 +118,7 @@
           <p class="small-note">Create a new, empty 10-visit sheet. Age is optional.</p>
           <form id="add-student-form" class="form-grid">
             <div class="form-field"><label for="new-name">Full name</label><input id="new-name" name="name" maxlength="80" required placeholder="Student's name"></div>
-            <div class="form-field"><label for="new-chinese-name">Chinese name (optional)</label><input id="new-chinese-name" maxlength="80" placeholder="中文姓名"></div>
+            <div class="form-field"><label for="new-chinese-name">Chinese name (optional)</label><input id="new-chinese-name" maxlength="80" placeholder="中文名字"></div>
             <div class="form-field"><label for="new-age">Age (optional)</label><input id="new-age" name="age" type="number" min="1" max="120" placeholder="e.g. 12"></div>
             <button class="button button-primary button-full" type="submit">Add student</button>
           </form>
@@ -131,7 +133,7 @@
           <form id="edit-student-form" class="form-grid">
             <div class="form-field"><label for="edit-select">Select student</label><select id="edit-select" required></select></div>
             <div class="form-field"><label for="edit-name">Full name</label><input id="edit-name" maxlength="80" required></div>
-            <div class="form-field"><label for="edit-chinese-name">Chinese name (optional)</label><input id="edit-chinese-name" maxlength="80" placeholder="中文姓名"></div>
+            <div class="form-field"><label for="edit-chinese-name">Chinese name (optional)</label><input id="edit-chinese-name" maxlength="80" placeholder="中文名字"></div>
             <div class="form-field"><label for="edit-age">Age (optional)</label><input id="edit-age" type="number" min="1" max="120"></div>
             <button class="button button-secondary button-full" type="submit">Save student details</button>
           </form>
@@ -189,7 +191,7 @@
     <form id="pin-form">
       <h2>Teacher Access</h2>
       <p class="supporting-text">Enter the four-digit demo PIN to continue.</p>
-      <p class="demo-pin-note">Prototype PIN: <strong>1234</strong> · Not real authentication.</p>
+      <p class="demo-pin-note">Prototype PINs: <strong>1234</strong> or <strong>5678</strong> · Not real authentication.</p>
       <label for="pin-input" class="field-label">Demo PIN</label>
       <input id="pin-input" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" required placeholder="4 digits">
       <p id="pin-error" class="error-note" role="alert" hidden>Incorrect demo PIN. Try again.</p>

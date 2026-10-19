@@ -3,7 +3,7 @@
 // FLORENCE ART STUDIO — LOCAL LEARNING PROTOTYPE
 // Everything in these arrays disappears on refresh. Do not use real student data.
 // The PIN below is deliberately visible: it demonstrates the interface, NOT security.
-const DEMO_PIN = "1234";
+const DEMO_PINS = ["1234", "5678"]; // Fictional demo only; NOT secure
 const SHEET_SIZE = 10;
 const $ = (id) => document.getElementById(id);
 
@@ -12,6 +12,7 @@ let nextSheetId = 1;
 let nextVisitId = 1;
 let selectedStudentId = null;
 let pendingConfirmation = null;
+let pendingCancelAction = null;
 let pendingPinAction = null;
 let editingVisitId = null;
 let toastTimer;
@@ -54,14 +55,14 @@ function makeStudent(name, age, currentOffsets, previousOffsets = [], chineseNam
     sheets.push(makeSheet(previousOffsets.map((n) => makeVisit(daysAgo(n), "sample"))));
   }
   sheets.push(makeSheet(currentOffsets.map((n) => makeVisit(daysAgo(n), "sample"))));
-  return { id: nextStudentId++, name, chineseName, age, sheets };
+  return { id: nextStudentId++, name, chineseName, age, sheets, paymentPending: false };
 }
 
 // Fictional examples, including two students with the same name.
 const students = [
   makeStudent("Emily Chen", 12, [42, 35, 28, 21, 14, 7], [175, 168, 161, 154, 147, 140, 133, 126, 119, 112], "陈美玲"),
   makeStudent("Kevin Li", 16, [63, 56, 49, 42, 35, 28, 21, 14, 7], [], "李凯文"),
-  makeStudent("Sophia Wang", 10, [70, 63, 56, 49, 42, 35, 28, 21, 14, 7], [], "王思雅"),
+  makeStudent("Sophia Wang", 10, [63, 56, 49, 42, 35, 28, 21, 14, 7], [], "王思雅"),
   makeStudent("Jason Wu", 15, [21, 14, 7]),
   makeStudent("Emily Chen", 17, [28, 14]),
   makeStudent("Lucy Zhang", 9, [])
@@ -121,7 +122,7 @@ function appendStudentResults(results, matches) {
     const left = element("span");
     left.appendChild(element("span", "result-name", student.name));
     const age = student.age === null ? "Age not listed" : `Age ${student.age}`;
-    const sub = `${student.chineseName ? student.chineseName + " · " : ""}${age} · Last visit: ${prettyDate(lastVisit(student))}`;
+    const sub = `${student.chineseName ? student.chineseName + " · " : ""}${age} · Last visit: ${prettyDate(lastVisit(student))}${student.paymentPending ? " · PAYMENT PENDING" : ""}`;
     left.appendChild(element("span", "result-subtitle", sub));
     const used = currentSheet(student).visits.length;
     row.append(left, element("span", "result-right", `${used} / 10 used  →`));
@@ -172,6 +173,8 @@ function renderStudent() {
   $("student-meta").textContent = `${student.chineseName ? student.chineseName + " · " : ""}${student.age === null ? "Age not listed" : `Age ${student.age}`}`;
   $("visit-count").textContent = `${used} / ${SHEET_SIZE} visits`;
   $("remaining-count").textContent = `${SHEET_SIZE - used} visits remaining`;
+  $("payment-hold").hidden = !student.paymentPending;
+  $("resolve-payment").hidden = !student.paymentPending;
   const tbody = $("attendance-rows");
   tbody.replaceChildren();
   for (let i = 0; i < SHEET_SIZE; i++) {
@@ -230,6 +233,8 @@ function askConfirmation(title, message, buttonText, onAccept) {
   $("confirm-message").textContent = message;
   $("confirm-accept").textContent = buttonText;
   pendingConfirmation = onAccept;
+  pendingCancelAction = null;
+  $("confirm-cancel").textContent = "Cancel";
   $("confirm-dialog").showModal();
 }
 function requestDemoPin(onSuccess) {
@@ -259,18 +264,39 @@ function startVisitFlow() {
 function startNewSheetFlow() {
   const student = selectedStudent();
   if (!student || currentSheet(student).visits.length !== SHEET_SIZE) return;
+  if (student.paymentPending) { toast("Payment already pending. Resolve the hold before creating another sheet."); return; }
   requestDemoPin(() => askConfirmation(
     "Start a new sheet?",
-    `Only proceed if the teacher has received payment for ${student.name}'s next 10 classes. The completed sheet will remain in history. No payment is processed here.`,
-    "Confirm and start", () => {
+    `Start a new 0/10 sheet for ${student.name}. If cash has NOT been received, the student will be tagged PAYMENT PENDING. The completed sheet stays in history.`,
+    "Continue", () => {
       if (currentSheet(student).visits.length !== SHEET_SIZE) return;
-      student.sheets.push(makeSheet());
-      addLog(`${student.name}: New 10-visit sheet created (payment marked received in demo)`);
-      renderStudent();
-      showScreen("student");
-      toast("New empty sheet created. Previous sheet saved in history.");
+      // Ask for payment status only after authorizing a new sheet.
+      askConfirmation("Has payment been received?", `Choose 'Payment received' only if cash has been collected from ${student.name}. Otherwise continue with a clearly marked unpaid sheet.`, "Payment received", () => finishNewSheet(student, false));
+      // The secondary button becomes the unpaid option for this specific dialog.
+      $("confirm-cancel").textContent = "Payment pending";
+      pendingCancelAction = () => finishNewSheet(student, true);
     }
   ));
+}
+
+function finishNewSheet(student, unpaid) {
+  if (currentSheet(student).visits.length !== SHEET_SIZE) return;
+  student.sheets.push(makeSheet());
+  student.paymentPending = unpaid;
+  addLog(`${student.name}: New sheet started — ${unpaid ? "PAYMENT PENDING" : "payment received"}`);
+  renderStudent();
+  showScreen("student");
+  toast(unpaid ? "New sheet opened with PAYMENT PENDING tag." : "New sheet opened. Payment marked received.");
+}
+function resolvePayment() {
+  const student = selectedStudent();
+  if (!student || !student.paymentPending) return;
+  requestDemoPin(() => askConfirmation("Confirm cash received?", `Mark ${student.name}'s outstanding payment as received?`, "Mark paid", () => {
+    student.paymentPending = false;
+    addLog(`${student.name}: Payment hold cleared by administrator`);
+    renderStudent();
+    toast("Payment hold cleared.");
+  }));
 }
 
 // Admin tabs keep the teacher dashboard compact on a phone.
@@ -428,24 +454,33 @@ $("clear-search").addEventListener("click", () => {
 $("record-visit").addEventListener("click", startVisitFlow);
 $("renew-from-sheet").addEventListener("click", startNewSheetFlow);
 $("renew-from-success").addEventListener("click", startNewSheetFlow);
+$("resolve-payment").addEventListener("click", resolvePayment);
 $("admin-entry").addEventListener("click", () => requestDemoPin(() => {
   refreshAdminSelectors();
   selectAdminTab("students");
   showScreen("admin");
 }));
 
-$("confirm-cancel").addEventListener("click", () => $("confirm-dialog").close());
+$("confirm-cancel").addEventListener("click", () => {
+  const cancelAction = pendingCancelAction;
+  pendingCancelAction = null;
+  pendingConfirmation = null;
+  pendingCancelAction = null;
+  $("confirm-dialog").close();
+  if (cancelAction) cancelAction();
+});
 $("confirm-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const action = pendingConfirmation;
   pendingConfirmation = null;
+  pendingCancelAction = null;
   $("confirm-dialog").close();
   if (action) action();
 });
 $("pin-cancel").addEventListener("click", () => $("pin-dialog").close());
 $("pin-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  if ($("pin-input").value !== DEMO_PIN) {
+  if (!DEMO_PINS.includes($("pin-input").value)) {
     $("pin-error").hidden = false;
     $("pin-input").select();
     return;
@@ -456,7 +491,7 @@ $("pin-form").addEventListener("submit", (event) => {
   if (action) action();
 });
 $("pin-dialog").addEventListener("close", () => { pendingPinAction = null; });
-$("confirm-dialog").addEventListener("close", () => { pendingConfirmation = null; });
+$("confirm-dialog").addEventListener("close", () => { pendingConfirmation = null; pendingCancelAction = null; $("confirm-cancel").textContent = "Cancel"; });
 for (const tab of document.querySelectorAll("[data-tab]")) {
   tab.addEventListener("click", () => selectAdminTab(tab.dataset.tab));
 }
