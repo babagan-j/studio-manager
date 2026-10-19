@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f5">
+  <meta name="description" content="A fictional art studio attendance prototype.">
+  <title>Florence Art Studio — Attendance Prototype</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <button type="button" id="brand-home" class="brand" aria-label="Go to student search">
+        <span class="brand-mark" aria-hidden="true">F</span>
+        <span class="brand-name">Florence Art Studio</span>
+      </button>
+      <div class="header-actions">
+        <span class="language-note" title="Chinese translation planned for a future version">EN · 中文 later</span>
+        <button type="button" id="admin-entry" class="button button-outline button-small">Teacher Access</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="demo-banner" role="note"><strong>Learning prototype</strong> · Fictional students only · Changes reset when the page reloads.</div>
+
+    <!-- Only one section (screen) is shown at a time. JavaScript handles navigation. -->
+    <section id="home-screen" class="screen" aria-labelledby="home-heading">
+      <div class="intro">
+        <p class="eyebrow">STUDENT SIGN-OUT</p>
+        <h1 id="home-heading">Find a student</h1>
+        <p class="supporting-text">Search the student's name, check their remaining visits, then open their attendance sheet.</p>
+      </div>
+      <div class="panel search-panel">
+        <label for="student-search" class="field-label">Student name</label>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" class="search-icon" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4 4"></path></svg>
+          <input id="student-search" type="search" placeholder="Start typing a name…" autocomplete="off" spellcheck="false">
+          <button id="clear-search" class="clear-button" type="button" hidden aria-label="Clear search">Clear</button>
+        </div>
+        <p id="search-status" class="small-note" role="status">Start typing to find a student.</p>
+        <div id="search-results" class="search-results" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="student-screen" class="screen" aria-labelledby="student-heading" hidden>
+      <button type="button" id="student-back" class="back-button">← Back to search</button>
+      <div class="student-title-row">
+        <div>
+          <p class="eyebrow">CURRENT ATTENDANCE SHEET</p>
+          <h1 id="student-heading">Student name</h1>
+          <p id="student-meta" class="supporting-text"></p>
+        </div>
+        <div class="count-chip" id="visit-count">0 / 10 visits</div>
+      </div>
+
+      <div class="panel sheet-panel">
+        <div class="sheet-heading">
+          <h2>Attendance record</h2>
+          <p id="remaining-count" class="small-note">10 visits remaining</p>
+        </div>
+        <div class="table-scroll">
+          <table class="attendance-table">
+            <thead><tr><th scope="col">Date</th><th scope="col">Acknowledgment</th></tr></thead>
+            <tbody id="attendance-rows"></tbody>
+          </table>
+        </div>
+        <p id="sheet-alert" class="sheet-alert" hidden></p>
+        <button type="button" id="record-visit" class="button button-primary button-full">Record today's visit</button>
+        <button type="button" id="renew-from-sheet" class="button button-outline button-full" hidden>Start new sheet · Teacher PIN</button>
+      </div>
+
+      <details id="previous-sheets" class="history-panel" hidden>
+        <summary id="history-summary">Previous attendance sheets</summary>
+        <div id="sheet-history"></div>
+      </details>
+    </section>
+
+    <section id="success-screen" class="screen success-screen" aria-labelledby="success-heading" hidden>
+      <div class="panel success-panel">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <p class="eyebrow">ALL SET</p>
+        <h1 id="success-heading">Visit recorded</h1>
+        <p id="success-message" class="supporting-text"></p>
+        <p id="success-complete" class="sheet-alert" hidden>This sheet is now complete. The teacher can start a new one after receiving payment.</p>
+        <button type="button" id="renew-from-success" class="button button-outline button-full" hidden>Start new sheet · Teacher PIN</button>
+        <button type="button" id="success-home" class="button button-primary button-full">Return home</button>
+      </div>
+    </section>
+
+    <section id="admin-screen" class="screen" aria-labelledby="admin-heading" hidden>
+      <button type="button" id="admin-back" class="back-button">← Back to search</button>
+      <div class="intro intro-compact">
+        <p class="eyebrow">TEACHER TOOLS · DEMO ONLY</p>
+        <h1 id="admin-heading">Administration</h1>
+        <p class="supporting-text">Manage fictional student sheets. The demo PIN is not real security.</p>
+      </div>
+      <div class="admin-tabs" role="tablist" aria-label="Administration sections">
+        <button type="button" class="admin-tab is-active" data-tab="students" role="tab" aria-selected="true" aria-controls="admin-students">Students</button>
+        <button type="button" class="admin-tab" data-tab="attendance" role="tab" aria-selected="false" aria-controls="admin-attendance">Attendance</button>
+        <button type="button" class="admin-tab" data-tab="log" role="tab" aria-selected="false" aria-controls="admin-log">Activity log</button>
+      </div>
+
+      <div id="admin-students" class="admin-content" role="tabpanel">
+        <div class="panel form-panel">
+          <h2>Add a student</h2>
+          <p class="small-note">Create a new, empty 10-visit sheet. Age is optional.</p>
+          <form id="add-student-form" class="form-grid">
+            <div class="form-field"><label for="new-name">Full name</label><input id="new-name" name="name" maxlength="80" required placeholder="Student's name"></div>
+            <div class="form-field"><label for="new-age">Age (optional)</label><input id="new-age" name="age" type="number" min="1" max="120" placeholder="e.g. 12"></div>
+            <button class="button button-primary button-full" type="submit">Add student</button>
+          </form>
+        </div>
+        <div class="panel form-panel">
+          <h2>Edit student details</h2>
+          <form id="edit-student-form" class="form-grid">
+            <div class="form-field"><label for="edit-select">Select student</label><select id="edit-select" required></select></div>
+            <div class="form-field"><label for="edit-name">Full name</label><input id="edit-name" maxlength="80" required></div>
+            <div class="form-field"><label for="edit-age">Age (optional)</label><input id="edit-age" type="number" min="1" max="120"></div>
+            <button class="button button-secondary button-full" type="submit">Save student details</button>
+          </form>
+          <div class="edit-corrections">
+            <h3>Correct attendance</h3>
+            <p class="small-note">Remove an incorrect visit from the selected student's current sheet. Changes appear in the activity log.</p>
+            <div id="admin-visit-list" class="admin-visit-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="admin-attendance" class="admin-content" role="tabpanel" hidden>
+        <div class="panel form-panel">
+          <h2>Attendance & paper imports</h2>
+          <div class="form-field"><label for="attendance-select">Select student</label><select id="attendance-select"></select></div>
+          <p id="admin-attendance-summary" class="small-note"></p>
+          <form id="import-form" class="form-grid">
+            <div class="form-field"><label for="import-date">Date from paper sheet</label><input id="import-date" type="date" required></div>
+            <button type="submit" id="import-button" class="button button-secondary button-full">Import this visit</button>
+          </form>
+          <p class="small-note">Enter paper dates one at a time. Duplicates and dates in the future are blocked.</p>
+        </div>
+        <div class="panel form-panel" id="admin-archive-panel" hidden>
+          <h2>Previous sheets</h2>
+          <div id="admin-archive-list"></div>
+        </div>
+      </div>
+
+      <div id="admin-log" class="admin-content" role="tabpanel" hidden>
+        <div class="panel form-panel">
+          <h2>Recent activity</h2>
+          <p class="small-note">This log only exists until you refresh the demo. The real version will save it securely.</p>
+          <div id="activity-log" class="log-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">Florence Art Studio · Educational prototype · No real records or payments</footer>
+
+  <!-- Reusable confirmation pop-up. All variable text is added safely in JavaScript. -->
+  <dialog id="confirm-dialog" class="dialog">
+    <form id="confirm-form">
+      <h2 id="confirm-title">Confirm action</h2>
+      <p id="confirm-message" class="supporting-text"></p>
+      <div class="dialog-actions">
+        <button type="button" id="confirm-cancel" class="button button-outline">Cancel</button>
+        <button type="submit" id="confirm-accept" class="button button-primary">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- PIN is a VISUAL SIMULATION ONLY. The code is visible in script.js. -->
+  <dialog id="pin-dialog" class="dialog">
+    <form id="pin-form">
+      <h2>Teacher Access</h2>
+      <p class="supporting-text">Enter the four-digit demo PIN to continue.</p>
+      <p class="demo-pin-note">Prototype PIN: <strong>1234</strong> · Not real authentication.</p>
+      <label for="pin-input" class="field-label">Demo PIN</label>
+      <input id="pin-input" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" required placeholder="4 digits">
+      <p id="pin-error" class="error-note" role="alert" hidden>Incorrect demo PIN. Try again.</p>
+      <div class="dialog-actions">
+        <button type="button" id="pin-cancel" class="button button-outline">Cancel</button>
+        <button type="submit" class="button button-primary">Continue</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
